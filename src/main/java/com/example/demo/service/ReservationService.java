@@ -35,6 +35,7 @@ public class ReservationService {
     }
 
     // TODO: 1. 트랜잭션 이해
+    @Transactional
     public void createReservation(Long itemId, Long userId, LocalDateTime startAt, LocalDateTime endAt) {
         // 쉽게 데이터를 생성하려면 아래 유효성검사 주석 처리
         List<Reservation> haveReservations = reservationRepository.findConflictingReservations(itemId, startAt, endAt);
@@ -48,7 +49,7 @@ public class ReservationService {
         Reservation savedReservation = reservationRepository.save(reservation);
 
         RentalLog rentalLog = new RentalLog(savedReservation, "로그 메세지", "CREATE");
-        rentalLogService.save(rentalLog);
+        rentalLogService.save(rentalLog); //RentalLogService의 save메서드의 조건 확인
     }
 
     // TODO: 3. N+1 문제
