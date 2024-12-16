@@ -18,12 +18,27 @@ public class AdminService {
     // TODO: 4. find or save 예제 개선
     @Transactional
     public void reportUsers(List<Long> userIds) {
-        for (Long userId : userIds) {
-            User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("해당 ID에 맞는 값이 존재하지 않습니다."));
+        //수정해야 할 부분
+//        for (Long userId : userIds) {
+//            User user = userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("해당 ID에 맞는 값이 존재하지 않습니다."));
+//
+//            user.updateStatusToBlocked();
+//
+//            userRepository.save(user);
+//        }
+        List<User> users = userRepository.findById(userIds);  // 해결방안 : 하나씩 받아오는게 아닌 리스트로 한번에 받아오기
 
+        for(User user : users){
             user.updateStatusToBlocked();
-
-            userRepository.save(user);
         }
+
+        userRepository.saveAll(users);
+
+
+
+
+
+
+
     }
 }
