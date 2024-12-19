@@ -34,4 +34,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
         return findById(id).orElseThrow(() -> new IllegalArgumentException("해당 ID에 맞는 데이터가 존재하지 않습니다."));
     }
 
+
+    @Query("SELECT r FROM Reservation r JOIN FETCH r.user JOIN FETCH r.item")
+    List<Reservation> findAllWithUserAndItem();
 }

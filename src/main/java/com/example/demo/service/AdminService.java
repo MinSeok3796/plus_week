@@ -26,19 +26,12 @@ public class AdminService {
 //
 //            userRepository.save(user);
 //        }
-        List<User> users = userRepository.findById(userIds);  // 해결방안 : 하나씩 받아오는게 아닌 리스트로 한번에 받아오기
-
+        //방법 1. 리스트로 한번에 받아오고 한번에 저장하기
+        List<User> users = userRepository.findById(userIds);
         for(User user : users){
             user.updateStatusToBlocked();
         }
-
         userRepository.saveAll(users);
-
-
-
-
-
-
 
     }
 }

@@ -7,6 +7,7 @@ import com.example.demo.dto.UserRequestDto;
 import com.example.demo.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,22 +23,25 @@ public class UserController {
     }
 
     @PostMapping
-    public void signupWithEmail(@RequestBody UserRequestDto userRequestDto) {
+    public ResponseEntity<String> signupWithEmail(@RequestBody UserRequestDto userRequestDto) {
         userService.signupWithEmail(userRequestDto);
+        return ResponseEntity.ok("User signup successful");
     }
 
     @PostMapping("/login")
-    public void loginWithEmail(@RequestBody LoginRequestDto loginRequestDto, HttpServletRequest request) {
+    public ResponseEntity<String> loginWithEmail(@RequestBody LoginRequestDto loginRequestDto, HttpServletRequest request) {
         Authentication authentication = userService.loginUser(loginRequestDto);
         HttpSession session = request.getSession();
         session.setAttribute(GlobalConstants.USER_AUTH, authentication);
+        return ResponseEntity.ok("User logged in successful");
     }
 
     @PostMapping("/logout")
-    public void logout(HttpServletRequest request) {
+    public ResponseEntity<String> logout(HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         if (session != null) {
             session.invalidate();
         }
+        return ResponseEntity.ok("User logged out successful");
     }
 }

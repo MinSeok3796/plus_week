@@ -1,14 +1,13 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.ReservationResponseDto;
-import com.example.demo.entity.Item;
-import com.example.demo.entity.RentalLog;
-import com.example.demo.entity.Reservation;
-import com.example.demo.entity.User;
+import com.example.demo.entity.*;
 import com.example.demo.exception.ReservationConflictException;
 import com.example.demo.repository.ItemRepository;
 import com.example.demo.repository.ReservationRepository;
 import com.example.demo.repository.UserRepository;
+import com.querydsl.core.BooleanBuilder;
+import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,15 +22,19 @@ public class ReservationService {
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
     private final RentalLogService rentalLogService;
+    private final JPAQueryFactory queryFactory;
+
 
     public ReservationService(ReservationRepository reservationRepository,
                               ItemRepository itemRepository,
                               UserRepository userRepository,
-                              RentalLogService rentalLogService) {
+                              RentalLogService rentalLogService,
+                              JPAQueryFactory queryFactory) {
         this.reservationRepository = reservationRepository;
         this.itemRepository = itemRepository;
         this.userRepository = userRepository;
         this.rentalLogService = rentalLogService;
+        this.queryFactory = queryFactory;
     }
 
     // TODO: 1. 트랜잭션 이해
@@ -45,7 +48,7 @@ public class ReservationService {
 
         Item item = itemRepository.findByIdOrElseThrow(itemId);
         User user = userRepository.findByIdOrElseThrow(userId);
-        Reservation reservation = new Reservation(item, user, "PENDING", startAt, endAt);
+        Reservation reservation = new Reservation(item, user, ReservationStatus.PENDING, startAt, endAt);
         Reservation savedReservation = reservationRepository.save(reservation);
 
         RentalLog rentalLog = new RentalLog(savedReservation, "로그 메세지", "CREATE");
@@ -54,7 +57,7 @@ public class ReservationService {
 
     // TODO: 3. N+1 문제
     public List<ReservationResponseDto> getReservations() {
-        List<Reservation> reservations = reservationRepository.findAll();
+        List<Reservation> reservations = reservationRepository.findAllWithUserAndItem(); //repository에 쿼리문을 이용하여 Fetch Join을 수행
 
         return reservations.stream().map(reservation -> {
             User user = reservation.getUser();
@@ -78,18 +81,39 @@ public class ReservationService {
         return convertToDto(reservations);
     }
 
-    public List<Reservation> searchReservations(Long userId, Long itemId) {
+//    public List<Reservation> searchReservations(Long userId, Long itemId) {
+//
+//        if (userId != null && itemId != null) {
+//            return reservationRepository.findByUserIdAndItemId(userId, itemId);
+//        } else if (userId != null) {
+//            return reservationRepository.findByUserId(userId);
+//        } else if (itemId != null) {
+//            return reservationRepository.findByItemId(itemId);
+//        } else {
+//            return reservationRepository.findAll();
+//        }
+//    }
+public List<Reservation> searchReservations(Long userId, Long itemId) {
+    QReservation qReservation = QReservation.reservation;
+    QUser qUser = QUser.user;
+    QItem qItem = QItem.item;
 
-        if (userId != null && itemId != null) {
-            return reservationRepository.findByUserIdAndItemId(userId, itemId);
-        } else if (userId != null) {
-            return reservationRepository.findByUserId(userId);
-        } else if (itemId != null) {
-            return reservationRepository.findByItemId(itemId);
-        } else {
-            return reservationRepository.findAll();
-        }
+    BooleanBuilder builder = new BooleanBuilder();
+
+    if (userId != null) {
+        builder.and(qReservation.user.id.eq(userId));
     }
+
+    if (itemId != null) {
+        builder.and(qReservation.item.id.eq(itemId));
+    }
+
+    return queryFactory.selectFrom(qReservation)
+            .join(qReservation.user, qUser).fetchJoin()
+            .join(qReservation.item, qItem).fetchJoin()
+            .where(builder)
+            .fetch();
+}
 
     private List<ReservationResponseDto> convertToDto(List<Reservation> reservations) {
         return reservations.stream()
@@ -131,19 +155,19 @@ public class ReservationService {
                 if (!"PENDING".equals(reservation.getStatus())) {
                     throw new IllegalArgumentException("PENDING 상태만 APPROVED로 변경 가능합니다.");
                 }
-                reservation.updateStatus("APPROVED");
+                reservation.updateStatus(ReservationStatus.APPROVED);
                 break;
             case "CANCELED":
                 if ("EXPIRED".equals(reservation.getStatus())) {
                     throw new IllegalArgumentException("EXPIRED 상태인 예약은 취소할 수 없습니다.");
                 }
-                reservation.updateStatus("CANCELED");
+                reservation.updateStatus(ReservationStatus.CANCELED);
                 break;
             case "EXPIRED":
                 if (!"PENDING".equals(reservation.getStatus())) {
                     throw new IllegalArgumentException("PENDING 상태만 EXPIRED로 변경 가능합니다.");
                 }
-                reservation.updateStatus("EXPIRED");
+                reservation.updateStatus(ReservationStatus.EXPIRED);
                 break;
             default:
                 throw new IllegalArgumentException("올바르지 않은 상태: " + status);
